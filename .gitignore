@@ -3,3 +3,9 @@ js/local-config.js
 .env
 .env.*
 .DS_Store
+
+# 개발/진단용
+node_modules/
+package-lock.json
+package.json
+diagnose.js

@@ -144,7 +144,7 @@
       <div class="post-header">
         ${userAvatarHtml(38)}
         <div class="post-meta"><div class="post-name-row"><span>${esc((S.getUser() || {}).nickname || "나")}</span></div><div class="post-sub">${relativeTime(post.createdAt)}</div></div>
-        <div class="icon-btn">⋯</div>
+        <div class="icon-btn" onclick="event.stopPropagation();App.deletePost('${post.id}')" title="삭제">⋯</div>
       </div>
       <div class="post-content">${esc(post.content)}</div>
       ${media ? `<div class="post-image ${media}">${MEDIA_EMOJI[media] || ""}</div>` : ""}
@@ -174,7 +174,7 @@
     el("detail-post").innerHTML = `<article class="post" style="border-bottom:none">
       <div class="post-header">${userAvatarHtml(38)}
         <div class="post-meta"><div class="post-name-row"><span>${esc((S.getUser() || {}).nickname || "나")}</span></div><div class="post-sub">${relativeTime(post.createdAt)}</div></div>
-        <div class="icon-btn">⋯</div>
+        <div class="icon-btn" onclick="App.deletePost('${post.id}')" title="삭제">⋯</div>
       </div>
       <div class="post-content">${esc(post.content)}</div>
       ${media ? `<div class="post-image ${media}">${MEDIA_EMOJI[media] || ""}</div>` : ""}
@@ -579,6 +579,14 @@
 
   window.App.shareProfile = function () { toast("공유 링크가 복사되었어요 (데모)"); };
   window.App.toast = toast;
+
+  window.App.deletePost = function (id) {
+    if (!confirm("이 게시물을 삭제할까요? 달린 댓글도 함께 삭제됩니다.")) return;
+    S.deletePost(id);
+    toast("게시물을 삭제했어요");
+    if (current === "postDetail") goto("feed");
+    else renderers.feed();
+  };
 
   // ============ 온보딩 ============
   window.App.finishOnboarding = function () {

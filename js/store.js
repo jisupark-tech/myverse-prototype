@@ -162,6 +162,14 @@ window.Store = (function () {
       save();
       return p;
     },
+    deletePost(id) {
+      const idx = state.posts.findIndex((p) => p.id === id);
+      if (idx === -1) return;
+      state.posts.splice(idx, 1);
+      state.comments = state.comments.filter((c) => c.postId !== id);
+      if (state.user && state.user.postCount > 0) state.user.postCount -= 1;
+      save();
+    },
 
     // ---- comments ----
     getComments(postId) {
@@ -349,22 +357,23 @@ window.Store = (function () {
     return "friend";
   }
 
-  window.relationshipLabel = function (status) {
-    const map = {
-      stranger: "알 수도 있는 사람",
-      follower: "팔로워",
-      active_fan: "단골 팬",
-      friend: "친구",
-      close_friend: "친한 친구",
-      collaborator: "함께 작업하는 사이",
-      critic: "솔직한 피드백을 주는 사이",
-      recommended_friend: "추천 친구",
-      interest_match: "관심사가 비슷한 사람",
-      creator_network: "크리에이터",
-      brand_interest: "브랜드·제안",
-    };
-    return map[status] || status;
-  };
-
   return window.Store;
 })();
+
+// IIFE 바깥에서 정의 (Store 내부 상태를 쓰지 않는 순수 함수)
+window.relationshipLabel = function (status) {
+  const map = {
+    stranger: "알 수도 있는 사람",
+    follower: "팔로워",
+    active_fan: "단골 팬",
+    friend: "친구",
+    close_friend: "친한 친구",
+    collaborator: "함께 작업하는 사이",
+    critic: "솔직한 피드백을 주는 사이",
+    recommended_friend: "추천 친구",
+    interest_match: "관심사가 비슷한 사람",
+    creator_network: "크리에이터",
+    brand_interest: "브랜드·제안",
+  };
+  return map[status] || status;
+};
