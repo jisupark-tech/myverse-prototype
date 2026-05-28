@@ -1,0 +1,5 @@
+# 로컬 전용 설정 (API 키 등) — 절대 커밋 금지
+js/local-config.js
+.env
+.env.*
+.DS_Store

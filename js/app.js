@@ -624,7 +624,16 @@
   }
 
   // ============ 초기화 ============
+  function applyLocalConfig() {
+    const cfg = window.LOCAL_CONFIG;
+    if (cfg && cfg.apiKey) {
+      if (cfg.provider) S.setProvider(cfg.provider);
+      if (cfg.model) S.setModel(cfg.model);
+      S.setApiKey(cfg.apiKey);
+    }
+  }
   function init() {
+    applyLocalConfig();
     bindOnboarding();
     updateBadges();
     if (S.isOnboarded()) goto("feed");
