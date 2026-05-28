@@ -6,7 +6,7 @@ window.Store = (function () {
 
   const defaultState = () => ({
     user: null, // { nickname, bio, interests:[], desiredImage, criticismLevel, followerCount, postCount, createdAt }
-    settings: { apiKey: "", model: "claude-haiku-4-5-20251001" },
+    settings: { provider: "anthropic", apiKey: "", model: "claude-haiku-4-5-20251001" },
     activePersonaIds: [], // 이 유저의 버스에 등장한 페르소나
     posts: [], // { id, content, mediaType, mediaTag, tags:[], createdAt, likeCount, reach, engagementScore }
     comments: [], // { id, postId, personaId, parentId, text, reactionType, likeCount, createdAt }
@@ -60,6 +60,16 @@ window.Store = (function () {
     },
 
     // ---- settings ----
+    getProvider() {
+      return state.settings.provider || "anthropic";
+    },
+    setProvider(p) {
+      state.settings.provider = p;
+      const m = state.settings.model || "";
+      if (p === "openai" && m.indexOf("gpt") === -1) state.settings.model = "gpt-4o-mini";
+      if (p === "anthropic" && m.indexOf("claude") === -1) state.settings.model = "claude-haiku-4-5-20251001";
+      save();
+    },
     getApiKey() {
       return state.settings.apiKey || "";
     },

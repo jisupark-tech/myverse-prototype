@@ -480,27 +480,36 @@
   // ---- 설정 ----
   renderers.settings = function () {
     const hasKey = S.hasApiKey();
+    const provider = S.getProvider();
     const model = S.getModel();
+    const isOpenai = provider === "openai";
+    const models = isOpenai
+      ? [["gpt-4o-mini", "GPT-4o mini (빠르고 저렴 · 추천)"], ["gpt-4o", "GPT-4o (더 자연스러움)"]]
+      : [["claude-haiku-4-5-20251001", "Claude Haiku 4.5 (빠르고 저렴 · 추천)"], ["claude-sonnet-4-6", "Claude Sonnet 4.6 (더 자연스러움)"], ["claude-opus-4-7", "Claude Opus 4.7 (최고 품질 · 느림/비쌈)"]];
+    const keyLink = isOpenai ? "https://platform.openai.com/api-keys" : "https://console.anthropic.com/settings/keys";
+    const keyHost = isOpenai ? "platform.openai.com" : "console.anthropic.com";
+    const placeholder = isOpenai ? "sk-..." : "sk-ant-...";
     el("settings-content").innerHTML = `
       <div class="settings-group">
-        <h3>Claude API</h3>
-        <input type="password" class="input-field" id="api-key-input" placeholder="sk-ant-..." value="${esc(S.getApiKey())}" />
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="primary-btn" style="margin:0" onclick="App.saveApiKey()">저장 후 테스트</button>
-        </div>
-        <div class="key-status ${hasKey ? "ok" : ""}" id="key-status">${hasKey ? "✓ API 키가 저장되어 있어요" : "API 키를 입력하면 실제 댓글·DM이 생성돼요"}</div>
-        <select class="model-select" id="model-select">
-          <option value="claude-haiku-4-5-20251001" ${model.includes("haiku") ? "selected" : ""}>Claude Haiku 4.5 (빠르고 저렴 · 추천)</option>
-          <option value="claude-sonnet-4-6" ${model.includes("sonnet") ? "selected" : ""}>Claude Sonnet 4.6 (더 자연스러움)</option>
-          <option value="claude-opus-4-7" ${model.includes("opus") ? "selected" : ""}>Claude Opus 4.7 (최고 품질 · 느림/비쌈)</option>
+        <h3>AI 연결</h3>
+        <select class="model-select" id="provider-select" style="margin-top:0">
+          <option value="anthropic" ${!isOpenai ? "selected" : ""}>Claude (Anthropic)</option>
+          <option value="openai" ${isOpenai ? "selected" : ""}>GPT (OpenAI)</option>
         </select>
-        <div class="settings-help">API 키는 <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> 에서 발급. 키는 이 브라우저에만 저장되고 외부로 전송되지 않아요(Anthropic API 호출 제외).</div>
+        <input type="password" class="input-field" id="api-key-input" placeholder="${placeholder}" value="${esc(S.getApiKey())}" style="margin-top:8px" />
+        <button class="primary-btn" style="margin-top:8px" onclick="App.saveApiKey()">저장 후 테스트</button>
+        <div class="key-status ${hasKey ? "ok" : ""}" id="key-status">${hasKey ? "✓ 키가 저장되어 있어요" : "키를 입력하면 글 맥락을 읽는 진짜 댓글·DM이 생성돼요"}</div>
+        <select class="model-select" id="model-select">
+          ${models.map(([v, l]) => `<option value="${v}" ${model === v ? "selected" : ""}>${l}</option>`).join("")}
+        </select>
+        <div class="settings-help">API 키는 <a href="${keyLink}" target="_blank">${keyHost}</a> 에서 발급. 키는 이 브라우저에만 저장되고, 선택한 AI 제공사로만 전송돼요.</div>
       </div>
       <div class="settings-group">
         <h3>데이터</h3>
         <div class="settings-row"><div><div class="label">게시물</div><div class="sub">${S.getPosts().length}개 · 댓글 ${S.state.comments.length}개</div></div></div>
         <button class="danger-btn" onclick="App.resetAll()">모든 데이터 초기화</button>
       </div>`;
+    el("provider-select").addEventListener("change", (e) => { S.setProvider(e.target.value); renderers.settings(); });
     el("model-select").addEventListener("change", (e) => { S.setModel(e.target.value); toast("모델 변경됨"); });
   };
   window.App.saveApiKey = async function () {

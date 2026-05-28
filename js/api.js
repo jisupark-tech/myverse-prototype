@@ -5,21 +5,24 @@
 // 2단계: Vercel 서버리스 함수로 키를 백엔드에 숨기고 프록시 호출로 전환 예정.
 
 window.ClaudeAPI = (function () {
-  const ENDPOINT = "https://api.anthropic.com/v1/messages";
+  const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
+  const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
-  async function complete({ system, user, maxTokens = 1024, temperature = 1.0, model }) {
-    const apiKey = window.Store.getApiKey();
-    if (!apiKey) throw new Error("NO_API_KEY");
+  async function errorFrom(res) {
+    let detail = "";
+    try {
+      const err = await res.json();
+      detail = err.error ? err.error.message : JSON.stringify(err);
+    } catch (e) {
+      detail = res.statusText;
+    }
+    const error = new Error(detail || "API_ERROR");
+    error.status = res.status;
+    return error;
+  }
 
-    const body = {
-      model: model || window.Store.getModel(),
-      max_tokens: maxTokens,
-      temperature,
-      system,
-      messages: [{ role: "user", content: user }],
-    };
-
-    const res = await fetch(ENDPOINT, {
+  async function anthropicComplete({ system, user, maxTokens, temperature, model, apiKey }) {
+    const res = await fetch(ANTHROPIC_ENDPOINT, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -27,28 +30,35 @@ window.ClaudeAPI = (function () {
         "anthropic-version": "2023-06-01",
         "anthropic-dangerous-direct-browser-access": "true",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ model, max_tokens: maxTokens, temperature, system, messages: [{ role: "user", content: user }] }),
     });
-
-    if (!res.ok) {
-      let detail = "";
-      try {
-        const err = await res.json();
-        detail = err.error ? err.error.message : JSON.stringify(err);
-      } catch (e) {
-        detail = res.statusText;
-      }
-      const error = new Error(detail || "API_ERROR");
-      error.status = res.status;
-      throw error;
-    }
-
+    if (!res.ok) throw await errorFrom(res);
     const data = await res.json();
-    const text = (data.content || [])
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-    return text;
+    return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
+  }
+
+  async function openaiComplete({ system, user, maxTokens, temperature, model, apiKey }) {
+    const res = await fetch(OPENAI_ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + apiKey },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        temperature,
+        messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      }),
+    });
+    if (!res.ok) throw await errorFrom(res);
+    const data = await res.json();
+    return ((data.choices || [])[0] || {}).message?.content || "";
+  }
+
+  async function complete({ system, user, maxTokens = 1024, temperature = 1.0, model }) {
+    const apiKey = window.Store.getApiKey();
+    if (!apiKey) throw new Error("NO_API_KEY");
+    const provider = window.Store.getProvider();
+    const args = { system, user, maxTokens, temperature, model: model || window.Store.getModel(), apiKey };
+    return provider === "openai" ? openaiComplete(args) : anthropicComplete(args);
   }
 
   // 모델이 코드블록(```json ... ```)으로 감싸 반환하는 경우까지 처리하는 JSON 파서
@@ -85,12 +95,7 @@ window.ClaudeAPI = (function () {
   // API 키 유효성 빠른 확인
   async function testKey() {
     try {
-      await complete({
-        system: "Reply with the single word: ok",
-        user: "ping",
-        maxTokens: 8,
-        model: "claude-haiku-4-5-20251001",
-      });
+      await complete({ system: "Reply with the single word: ok", user: "ping", maxTokens: 16 });
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e.message, status: e.status };
