@@ -369,7 +369,6 @@
     S.bumpRelationship(chatPersonaId, 2, { interaction: true });
     input.value = "";
     renderChatMessages();
-    if (!S.hasApiKey()) { toast("설정에서 API 키를 입력하면 답장이 와요"); return; }
     // 타이핑 표시
     const tw = document.createElement("div");
     tw.className = "typing-indicator";

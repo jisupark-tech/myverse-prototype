@@ -190,6 +190,32 @@ ${personaBlocks}
     return json.filter((c) => window.getPersona(c.id) && c.text);
   }
 
+  // ── 오프라인(데모) 댓글: 키 없을 때 말투 샘플로 생성 ──
+  function offlineReactionType(p) {
+    if (p.behavior.criticism >= 0.4) return "critical";
+    if (p.internalRole === "growth_fan") return "fan_reaction";
+    if (["brand_collab", "local_brand_collab"].includes(p.internalRole)) return "brand_interest";
+    if (p.behavior.support >= 0.85) return "supportive";
+    if (p.internalRole === "playful_friend") return "casual";
+    return "empathetic";
+  }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function generateCommentsOffline(post, reactors) {
+    return reactors.map((p) => {
+      const c = { id: p.id, text: pick(p.commentStyle.samples), type: offlineReactionType(p) };
+      // 비판적 댓글엔 친구가 가볍게 받아치는 대댓글
+      if (p.behavior.criticism >= 0.35 && Math.random() < 0.55) {
+        const friend = reactors.find((r) => r.id !== p.id && r.behavior.criticism < 0.2);
+        if (friend) {
+          c.reply_from = friend.id;
+          c.reply_text = pick(friend.commentStyle.samples);
+        }
+      }
+      return c;
+    });
+  }
+
   // ── 게시물에 대한 전체 반응 처리 (타이밍 포함) ──
   async function reactToPost(post, cb = {}) {
     const analysis = analyzePost(post);
@@ -202,16 +228,13 @@ ${personaBlocks}
     });
     cb.onLike && cb.onLike();
 
-    if (!window.Store.hasApiKey()) {
-      cb.onNeedKey && cb.onNeedKey();
-      return;
-    }
-
     let comments = [];
     try {
       const count = estimateCommentCount(post, analysis);
       const reactors = selectReactors(post, analysis, count);
-      comments = await generateComments(post, reactors);
+      comments = window.Store.hasApiKey()
+        ? await generateComments(post, reactors)
+        : generateCommentsOffline(post, reactors);
     } catch (e) {
       cb.onError && cb.onError(e);
       return;
@@ -272,6 +295,10 @@ ${personaBlocks}
   // ── DM: 사용자 메시지에 대한 페르소나 응답 ──
   async function generateDmReply(personaId, userText) {
     const p = window.getPersona(personaId);
+    if (!window.Store.hasApiKey()) {
+      await sleep(900 + Math.random() * 900);
+      return pick(p.dmStyle.samples);
+    }
     const rel = window.Store.getRelationship(personaId) || {};
     const thread = window.Store.getDmThread(personaId);
     const history = (thread ? thread.messages : [])
@@ -293,6 +320,7 @@ ${personaBlocks}
   // ── DM: 페르소나가 먼저 보내는 선제 DM ──
   async function generateProactiveDm(personaId) {
     const p = window.getPersona(personaId);
+    if (!window.Store.hasApiKey()) return pick(p.dmStyle.samples);
     const rel = window.Store.getRelationship(personaId) || {};
     const recentPost = window.Store.getPosts()[0];
     const system = `너는 '${p.name}'(@${p.handle}). 아래 말투로 사용자에게 먼저 보내는 DM 한 통을 쓴다.
@@ -307,7 +335,6 @@ ${personaBlocks}
   }
 
   async function maybeProactiveDmAfterPost(post, onDm) {
-    if (!window.Store.hasApiKey()) return;
     const ids = window.Store.getActivePersonaIds();
     const cands = ids
       .map((id) => ({ id, rel: window.Store.getRelationship(id), p: window.getPersona(id) }))
