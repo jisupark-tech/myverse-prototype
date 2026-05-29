@@ -36,16 +36,27 @@ export default async function handler(req, res) {
   // 3) 토큰 상한
   const cappedTokens = Math.min(maxTokens || 1024, 2000);
 
+  // 4) 프로바이더 자동 선택: 요청한 프로바이더의 키가 없으면, 서버에 설정된
+  //    다른 프로바이더로 폴백한다(클라이언트 기본값과 서버 키 불일치 방지).
+  const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
+  const hasOpenai = !!process.env.OPENAI_API_KEY;
+  let effective = provider === "openai" ? "openai" : "anthropic";
+  if (effective === "anthropic" && !hasAnthropic && hasOpenai) effective = "openai";
+  if (effective === "openai" && !hasOpenai && hasAnthropic) effective = "anthropic";
+  if ((effective === "anthropic" && !hasAnthropic) || (effective === "openai" && !hasOpenai)) {
+    return res.status(500).json({ error: "서버에 AI 키가 설정되지 않았어요(관리자 확인 필요)" });
+  }
+  // 폴백으로 프로바이더가 바뀌면 클라이언트가 보낸 모델ID는 무효하므로 그쪽 기본 모델 사용
+  const useModel = effective === provider ? model : null;
+
   try {
     let text = "";
-    if (provider === "anthropic") {
-      const key = process.env.ANTHROPIC_API_KEY;
-      if (!key) return res.status(500).json({ error: "서버에 Anthropic 키가 설정되지 않았어요" });
+    if (effective === "anthropic") {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+        headers: { "content-type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: model || "claude-haiku-4-5-20251001",
+          model: useModel || "claude-haiku-4-5-20251001",
           max_tokens: cappedTokens,
           temperature: temperature == null ? 1.0 : temperature,
           system,
@@ -56,13 +67,11 @@ export default async function handler(req, res) {
       if (!r.ok) return res.status(r.status).json({ error: (d.error && d.error.message) || "API 오류" });
       text = (d.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
     } else {
-      const key = process.env.OPENAI_API_KEY;
-      if (!key) return res.status(500).json({ error: "서버에 OpenAI 키가 설정되지 않았어요" });
       const r = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer " + key },
+        headers: { "content-type": "application/json", authorization: "Bearer " + process.env.OPENAI_API_KEY },
         body: JSON.stringify({
-          model: model || "gpt-4o-mini",
+          model: useModel || "gpt-4o-mini",
           max_tokens: cappedTokens,
           temperature: temperature == null ? 1.0 : temperature,
           messages: [{ role: "system", content: system }, { role: "user", content: user }],
