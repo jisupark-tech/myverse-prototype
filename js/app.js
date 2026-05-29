@@ -483,6 +483,8 @@
     const provider = S.getProvider();
     const model = S.getModel();
     const spice = S.getSpiceLevel();
+    const profanity = S.getAllowProfanity();
+    const flirt = S.getFlirtMode();
     const isOpenai = provider === "openai";
     const models = isOpenai
       ? [["gpt-4o-mini", "GPT-4o mini (빠르고 저렴 · 추천)"], ["gpt-4o", "GPT-4o (더 자연스러움)"]]
@@ -518,7 +520,15 @@
           <option value="normal" ${spice === "normal" ? "selected" : ""}>🙂 보통 — 솔직하지만 무난하게</option>
           <option value="spicy" ${spice === "spicy" ? "selected" : ""}>🌶 매운맛 — 팩폭·돌직구·드립</option>
         </select>
-        <div class="settings-help">매운맛은 빈말 칭찬 없이 직설적으로 받아쳐요. 욕설·혐오·성적 표현·인신공격은 어느 단계에서도 차단됩니다. (실제 AI 연결 시 적용)</div>
+        <label class="settings-row" style="cursor:pointer">
+          <div><div class="label">🤬 비속어 허용</div><div class="sub">감정 실릴 때 가벼운 욕·은어를 양념처럼</div></div>
+          <input type="checkbox" id="profanity-toggle" ${profanity ? "checked" : ""} style="width:20px;height:20px" />
+        </label>
+        <label class="settings-row" style="cursor:pointer">
+          <div><div class="label">💘 썸·설렘 텐션</div><div class="sub">은근한 플러팅·밀당·두근거리는 뉘앙스</div></div>
+          <input type="checkbox" id="flirt-toggle" ${flirt ? "checked" : ""} style="width:20px;height:20px" />
+        </label>
+        <div class="settings-help">매운맛은 빈말 칭찬 없이 직설적으로. 비속어·썸은 켜면 적용돼요. 단 혐오·차별·인신공격·성적 노골 표현은 어느 설정에서도 차단됩니다(API 정책). (실제 AI 연결 시 적용)</div>
       </div>
       <div class="settings-group">
         <h3>데이터</h3>
@@ -530,6 +540,14 @@
     el("spice-select").addEventListener("change", (e) => {
       S.setSpiceLevel(e.target.value);
       toast(e.target.value === "spicy" ? "🌶 매운맛 적용" : e.target.value === "mild" ? "🍼 순한맛 적용" : "🙂 보통 적용");
+    });
+    el("profanity-toggle").addEventListener("change", (e) => {
+      S.setAllowProfanity(e.target.checked);
+      toast(e.target.checked ? "🤬 비속어 허용 켬" : "비속어 허용 끔");
+    });
+    el("flirt-toggle").addEventListener("change", (e) => {
+      S.setFlirtMode(e.target.checked);
+      toast(e.target.checked ? "💘 썸 텐션 켬" : "썸 텐션 끔");
     });
   };
   window.App.saveApiKey = async function () {
