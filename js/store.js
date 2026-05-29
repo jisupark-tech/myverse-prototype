@@ -6,7 +6,7 @@ window.Store = (function () {
 
   const defaultState = () => ({
     user: null, // { nickname, bio, interests:[], desiredImage, criticismLevel, followerCount, postCount, createdAt }
-    settings: { provider: "anthropic", apiKey: "", model: "claude-haiku-4-5-20251001", teamPassword: "" },
+    settings: { provider: "openai", apiKey: "", model: "gpt-4o-mini", teamPassword: "" },
     activePersonaIds: [], // 이 유저의 버스에 등장한 페르소나
     posts: [], // { id, content, mediaType, mediaTag, tags:[], createdAt, likeCount, reach, engagementScore }
     comments: [], // { id, postId, personaId, parentId, text, reactionType, likeCount, createdAt }
