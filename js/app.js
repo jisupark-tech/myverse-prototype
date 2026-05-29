@@ -482,6 +482,7 @@
     const hasKey = S.hasApiKey();
     const provider = S.getProvider();
     const model = S.getModel();
+    const spice = S.getSpiceLevel();
     const isOpenai = provider === "openai";
     const models = isOpenai
       ? [["gpt-4o-mini", "GPT-4o mini (빠르고 저렴 · 추천)"], ["gpt-4o", "GPT-4o (더 자연스러움)"]]
@@ -511,12 +512,25 @@
         <div class="settings-help"><b>팀 비밀번호</b>만 입력하면 운영자가 키를 숨겨둔 공유 서버로 동작해요(동업자용). 본인 키로 직접 쓰려면 아래 칸에 <a href="${keyLink}" target="_blank">${keyHost}</a> 키를 넣으세요. 모두 이 브라우저에만 저장됩니다.</div>
       </div>
       <div class="settings-group">
+        <h3>대화 강도</h3>
+        <select class="model-select" id="spice-select" style="margin-top:0">
+          <option value="mild" ${spice === "mild" ? "selected" : ""}>🍼 순한맛 — 다정하고 부드럽게</option>
+          <option value="normal" ${spice === "normal" ? "selected" : ""}>🙂 보통 — 솔직하지만 무난하게</option>
+          <option value="spicy" ${spice === "spicy" ? "selected" : ""}>🌶 매운맛 — 팩폭·돌직구·드립</option>
+        </select>
+        <div class="settings-help">매운맛은 빈말 칭찬 없이 직설적으로 받아쳐요. 욕설·혐오·성적 표현·인신공격은 어느 단계에서도 차단됩니다. (실제 AI 연결 시 적용)</div>
+      </div>
+      <div class="settings-group">
         <h3>데이터</h3>
         <div class="settings-row"><div><div class="label">게시물</div><div class="sub">${S.getPosts().length}개 · 댓글 ${S.state.comments.length}개</div></div></div>
         <button class="danger-btn" onclick="App.resetAll()">모든 데이터 초기화</button>
       </div>`;
     el("provider-select").addEventListener("change", (e) => { S.setProvider(e.target.value); renderers.settings(); });
     el("model-select").addEventListener("change", (e) => { S.setModel(e.target.value); toast("모델 변경됨"); });
+    el("spice-select").addEventListener("change", (e) => {
+      S.setSpiceLevel(e.target.value);
+      toast(e.target.value === "spicy" ? "🌶 매운맛 적용" : e.target.value === "mild" ? "🍼 순한맛 적용" : "🙂 보통 적용");
+    });
   };
   window.App.saveApiKey = async function () {
     const key = el("api-key-input").value.trim();

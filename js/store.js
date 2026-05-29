@@ -6,7 +6,7 @@ window.Store = (function () {
 
   const defaultState = () => ({
     user: null, // { nickname, bio, interests:[], desiredImage, criticismLevel, followerCount, postCount, createdAt }
-    settings: { provider: "openai", apiKey: "", model: "gpt-4o-mini", teamPassword: "" },
+    settings: { provider: "openai", apiKey: "", model: "gpt-4o-mini", teamPassword: "", spiceLevel: "normal" },
     activePersonaIds: [], // 이 유저의 버스에 등장한 페르소나
     posts: [], // { id, content, mediaType, mediaTag, tags:[], createdAt, likeCount, reach, engagementScore }
     comments: [], // { id, postId, personaId, parentId, text, reactionType, likeCount, createdAt }
@@ -82,6 +82,13 @@ window.Store = (function () {
     },
     setModel(m) {
       state.settings.model = m;
+      save();
+    },
+    getSpiceLevel() {
+      return state.settings.spiceLevel || "normal";
+    },
+    setSpiceLevel(lvl) {
+      state.settings.spiceLevel = ["mild", "normal", "spicy"].includes(lvl) ? lvl : "normal";
       save();
     },
     hasApiKey() {
