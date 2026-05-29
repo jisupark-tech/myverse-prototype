@@ -53,9 +53,35 @@ window.ClaudeAPI = (function () {
     return ((data.choices || [])[0] || {}).message?.content || "";
   }
 
+  // 백엔드 프록시 호출 (키는 서버에 숨겨져 있고, 팀 비밀번호로 인증)
+  async function proxyComplete({ system, user, maxTokens, temperature, model }) {
+    const password = window.Store.getTeamPassword();
+    if (!password) throw new Error("NO_PASSWORD");
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        password,
+        provider: window.Store.getProvider(),
+        system, user, maxTokens, temperature,
+        model: model || window.Store.getModel(),
+      }),
+    });
+    if (!res.ok) {
+      let detail = "";
+      try { const e = await res.json(); detail = e.error || ""; } catch (e) {}
+      const err = new Error(detail || "프록시 오류 " + res.status);
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    return data.text || "";
+  }
+
   async function complete({ system, user, maxTokens = 1024, temperature = 1.0, model }) {
     const apiKey = window.Store.getApiKey();
-    if (!apiKey) throw new Error("NO_API_KEY");
+    // 로컬에 직접 키가 있으면 직접 호출(개발용), 없으면 백엔드 프록시 사용
+    if (!apiKey) return proxyComplete({ system, user, maxTokens, temperature, model });
     const provider = window.Store.getProvider();
     const args = { system, user, maxTokens, temperature, model: model || window.Store.getModel(), apiKey };
     return provider === "openai" ? openaiComplete(args) : anthropicComplete(args);

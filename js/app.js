@@ -489,6 +489,11 @@
     const keyLink = isOpenai ? "https://platform.openai.com/api-keys" : "https://console.anthropic.com/settings/keys";
     const keyHost = isOpenai ? "platform.openai.com" : "console.anthropic.com";
     const placeholder = isOpenai ? "sk-..." : "sk-ant-...";
+    const statusMsg = S.hasApiKey()
+      ? "✓ 직접 키가 저장돼 있어요"
+      : S.hasTeamPassword()
+      ? "✓ 팀 비밀번호로 공유 서버를 사용 중이에요"
+      : "팀 비밀번호를 입력하면 댓글·DM이 생성돼요";
     el("settings-content").innerHTML = `
       <div class="settings-group">
         <h3>AI 연결</h3>
@@ -496,13 +501,14 @@
           <option value="anthropic" ${!isOpenai ? "selected" : ""}>Claude (Anthropic)</option>
           <option value="openai" ${isOpenai ? "selected" : ""}>GPT (OpenAI)</option>
         </select>
-        <input type="password" class="input-field" id="api-key-input" placeholder="${placeholder}" value="${esc(S.getApiKey())}" style="margin-top:8px" />
+        <input type="password" class="input-field" id="team-pw-input" placeholder="팀 비밀번호 (공유 서버용)" value="${esc(S.getTeamPassword())}" style="margin-top:8px" />
+        <input type="password" class="input-field" id="api-key-input" placeholder="${placeholder} (내 키로 직접 호출 · 선택)" value="${esc(S.getApiKey())}" style="margin-top:8px" />
         <button class="primary-btn" style="margin-top:8px" onclick="App.saveApiKey()">저장 후 테스트</button>
-        <div class="key-status ${hasKey ? "ok" : ""}" id="key-status">${hasKey ? "✓ 키가 저장되어 있어요" : "키를 입력하면 글 맥락을 읽는 진짜 댓글·DM이 생성돼요"}</div>
+        <div class="key-status ${hasKey || S.hasTeamPassword() ? "ok" : ""}" id="key-status">${statusMsg}</div>
         <select class="model-select" id="model-select">
           ${models.map(([v, l]) => `<option value="${v}" ${model === v ? "selected" : ""}>${l}</option>`).join("")}
         </select>
-        <div class="settings-help">API 키는 <a href="${keyLink}" target="_blank">${keyHost}</a> 에서 발급. 키는 이 브라우저에만 저장되고, 선택한 AI 제공사로만 전송돼요.</div>
+        <div class="settings-help"><b>팀 비밀번호</b>만 입력하면 운영자가 키를 숨겨둔 공유 서버로 동작해요(동업자용). 본인 키로 직접 쓰려면 아래 칸에 <a href="${keyLink}" target="_blank">${keyHost}</a> 키를 넣으세요. 모두 이 브라우저에만 저장됩니다.</div>
       </div>
       <div class="settings-group">
         <h3>데이터</h3>
@@ -514,14 +520,16 @@
   };
   window.App.saveApiKey = async function () {
     const key = el("api-key-input").value.trim();
+    const pw = el("team-pw-input") ? el("team-pw-input").value.trim() : "";
     S.setApiKey(key);
+    S.setTeamPassword(pw);
     const status = el("key-status");
-    if (!key) { status.textContent = "키를 입력해주세요"; status.className = "key-status bad"; return; }
+    if (!key && !pw) { status.textContent = "팀 비밀번호나 API 키 중 하나를 입력해주세요"; status.className = "key-status bad"; return; }
     status.innerHTML = `<span class="spinner"></span> 확인 중...`;
     status.className = "key-status";
     const res = await window.ClaudeAPI.testKey();
-    if (res.ok) { status.textContent = "✓ 정상 작동! 이제 게시물에 진짜 반응이 달려요"; status.className = "key-status ok"; }
-    else { status.textContent = "✗ 키 오류: " + (res.error || "확인 실패"); status.className = "key-status bad"; }
+    if (res.ok) { status.textContent = key ? "✓ 직접 호출 정상! 진짜 반응이 달려요" : "✓ 공유 서버 연결 정상! 진짜 반응이 달려요"; status.className = "key-status ok"; }
+    else { status.textContent = "✗ " + (res.error || "확인 실패"); status.className = "key-status bad"; }
   };
   window.App.resetAll = function () {
     if (!confirm("모든 게시물·댓글·관계·설정이 삭제됩니다. 계속할까요?")) return;

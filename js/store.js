@@ -6,7 +6,7 @@ window.Store = (function () {
 
   const defaultState = () => ({
     user: null, // { nickname, bio, interests:[], desiredImage, criticismLevel, followerCount, postCount, createdAt }
-    settings: { provider: "anthropic", apiKey: "", model: "claude-haiku-4-5-20251001" },
+    settings: { provider: "anthropic", apiKey: "", model: "claude-haiku-4-5-20251001", teamPassword: "" },
     activePersonaIds: [], // 이 유저의 버스에 등장한 페르소나
     posts: [], // { id, content, mediaType, mediaTag, tags:[], createdAt, likeCount, reach, engagementScore }
     comments: [], // { id, postId, personaId, parentId, text, reactionType, likeCount, createdAt }
@@ -86,6 +86,20 @@ window.Store = (function () {
     },
     hasApiKey() {
       return !!(state.settings.apiKey && state.settings.apiKey.length > 10);
+    },
+    getTeamPassword() {
+      return state.settings.teamPassword || "";
+    },
+    setTeamPassword(p) {
+      state.settings.teamPassword = (p || "").trim();
+      save();
+    },
+    hasTeamPassword() {
+      return !!(state.settings.teamPassword && state.settings.teamPassword.length > 0);
+    },
+    // 직접 키 또는 팀 비번(프록시) 중 하나라도 있으면 실제 LLM 사용 가능
+    hasLLM() {
+      return this.hasApiKey() || this.hasTeamPassword();
     },
 
     // ---- user ----
